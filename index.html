@@ -1,306 +1,690 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>chesstore-64 · Camera Chess Board</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
-<style>
-:root{--bg:#0f1319;--p:#1a212b;--b:#2a3340;--t:#e8edf2;--m:#8b97a5;--a:#6dbea4;--lt:#eef5f1;--dk:#6dbea4}
-body.light{--bg:#f4f6f8;--p:#fff;--b:#dfe4ea;--t:#1d2430;--m:#6b7785}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:14px 'Segoe UI',system-ui,sans-serif}
-header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 18px;background:color-mix(in srgb,var(--p) 85%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--b)}
-.logo{font-weight:700;font-size:18px;letter-spacing:.3px}.logo b{color:var(--a)}header .sp{flex:1}
-.w{max-width:1180px;margin:auto;padding:16px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
-.c{background:var(--p);border:1px solid var(--b);border-radius:14px;padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.12)}
-h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--m)}
-button,input,select,textarea{font:inherit;padding:8px 11px;border-radius:9px;border:1px solid var(--b);background:var(--bg);color:var(--t)}
-button{cursor:pointer;transition:.15s}button:hover{border-color:var(--a)}button.g{background:var(--a);border-color:var(--a);color:#06251c;font-weight:600}
-.r{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0;align-items:center}.r>input{flex:1;min-width:100px}
-#bw{display:flex;gap:8px}#ebar{width:14px;border-radius:7px;background:#222;overflow:hidden;display:flex;flex-direction:column-reverse}#ef{background:#f3f3f3;height:50%;transition:height .3s}
-#board{flex:1;max-width:520px;margin:auto}
-#board .white-1e1d7{background:var(--lt)!important;color:var(--dk)!important}#board .black-3c85d{background:var(--dk)!important;color:var(--lt)!important}
-#board .square-55d63.hl{box-shadow:inset 0 0 0 100px rgba(255,235,59,.42)}
-.cvw{position:relative}canvas{width:100%;display:block;border-radius:10px;background:#000;touch-action:none}
-#pv{max-width:200px;margin-top:8px}.row2{display:flex;gap:10px;align-items:flex-start}
-#st{min-height:38px;padding:8px 10px;border-radius:9px;background:color-mix(in srgb,var(--a) 14%,transparent);color:var(--a);margin:8px 0}
-#mv{max-height:140px;overflow:auto;line-height:1.8}#mv b{color:var(--m);margin:0 4px 0 8px}#mv span{padding:1px 5px;border-radius:4px}#mv .cur{background:var(--a);color:#06251c}
-small{color:var(--m)}#gl div{padding:7px;border-bottom:1px solid var(--b);cursor:pointer}#gl div:hover{color:var(--a)}
-label{color:var(--m)}
-</style></head><body>
-<header><span class="logo">♞ chesstore<b>-64</b></span><span class="sp"></span>
- <select id="bc"></select><select id="ps"></select><button id="th">🌗</button></header>
+<html lang="en">
 
-<div class="w">
-<div class="c"><h3>Digital board</h3>
- <div id="bw"><div id="ebar"><div id="ef"></div></div><div id="board"></div></div>
- <div class="r" style="justify-content:center"><button id="fl">⇅ Flip</button><button id="un">↶ Undo</button><button id="nw">New game</button></div>
- <div class="r" style="justify-content:center">Eval <b id="ev">–</b> <small id="bm"></small></div>
- <h3>Moves</h3><div id="mv"></div>
-</div>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>chesstore-64 · Camera Chess Board</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <style>
+        :root {
+            --bg: #0f1319;
+            --p: #1a212b;
+            --b: #2a3340;
+            --t: #e8edf2;
+            --m: #8b97a5;
+            --a: #6dbea4;
+            --lt: #eef5f1;
+            --dk: #6dbea4
+        }
 
-<div class="c"><h3>Real board camera</h3>
- <div class="cvw"><canvas id="cv" width="640" height="480"></canvas></div>
- <div class="r"><button id="cam" class="g">📷 Start camera</button><button id="cal">① Mark corners</button><button id="rot">⟳ Rotate</button><button id="ba" class="g">② Learn start position</button><select id="ang"><option value="0">Camera: top-down</option><option value="1">Camera: angled</option></select></div>
- <div id="st">Start the camera, then click the 4 corners: top-left, top-right, bottom-right, bottom-left (white at bottom = a8, h8, h1, a1). Drag corners to fine-tune.</div>
- <div class="row2"><div><h3>What the AI sees</h3><canvas id="pv" width="320" height="320"></canvas></div>
-  <div style="flex:1"><div class="r"><label><input type="checkbox" id="vo" checked> Voice</label><label><input type="checkbox" id="sn" checked> Beep</label></div>
-  <small>Detection reads every square as <b>empty / white / black</b>, learned from your own pieces and lighting, then finds the one legal move that explains the change. Green ring = white piece, red = black. Camera above the board works best.</small></div></div>
-</div>
+        body.light {
+            --bg: #f4f6f8;
+            --p: #fff;
+            --b: #dfe4ea;
+            --t: #1d2430;
+            --m: #6b7785
+        }
 
-<div class="c"><h3>Save &amp; share</h3>
- <div class="r"><input id="ev_" placeholder="Event" value="Friendly"><input id="dt" type="date"></div>
- <div class="r"><input id="wh" placeholder="White" value="Me"><input id="bl" placeholder="Black" value="Opponent">
-  <select id="rs"><option>*</option><option>1-0</option><option>0-1</option><option>1/2-1/2</option></select></div>
- <div class="r"><button id="sv" class="g">☁ Save to chesstore-64</button><button id="dl">⬇ .pgn</button><button id="sh">🔗 Share</button><button id="ls">My games</button></div>
- <div id="fs" style="color:var(--m)"></div><div id="gl"></div>
- <h3 style="margin-top:10px">PGN</h3><textarea id="pg" rows="7" style="width:100%"></textarea>
- <small>Firebase rules must allow read/write on <code>games</code>.</small>
-</div></div>
+        * {
+            box-sizing: border-box
+        }
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
-<script>
-const DB="https://chesstore-64-default-rtdb.asia-southeast1.firebasedatabase.app";
-const $$=id=>document.getElementById(id);
-let G=new Chess(),board,pset=localStorage.c64set||"neo",lastId=null;
-$$("dt").valueAsDate=new Date();
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--t);
+            font: 14px 'Segoe UI', system-ui, sans-serif
+        }
 
-/* ---------- themes (same chess.com piece sets as Puzzle4u) ---------- */
-const SETS={neo:"Neo",game_room:"Castle",classic:"Classic",neo_wood:"Neo Wood",cases:"Cases",alpha:"Alpha",wood:"Wood",light:"Light",tournament:"Tournament",luca:"Luca",club:"Club","3d_staunton":"3D Staunton"};
-const BC={Aquamarine:["#eef5f1","#6dbea4"],Green:["#eeeed2","#769656"],Brown:["#f0d9b5","#b58863"],Blue:["#dee3e6","#8ca2ad"],Lavender:["#efe9f4","#9f8cc0"],Pink:["#f6e7ee","#d78fa9"]};
-$$("ps").innerHTML=Object.entries(SETS).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");$$("ps").value=pset;
-$$("bc").innerHTML=Object.keys(BC).map(k=>`<option>${k}</option>`).join("");
-function setBC(k){const[l,d]=BC[k];document.documentElement.style.setProperty("--lt",l);document.documentElement.style.setProperty("--dk",d);localStorage.c64bc=k}
-$$("bc").value=localStorage.c64bc||"Aquamarine";setBC($$("bc").value);
-$$("bc").onchange=e=>setBC(e.target.value);
-$$("ps").onchange=e=>{pset=e.target.value;localStorage.c64set=pset;mk()};
-if(localStorage.c64light)document.body.classList.add("light");
-$$("th").onclick=()=>{document.body.classList.toggle("light");localStorage.c64light=document.body.classList.contains("light")?1:""};
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 18px;
+            background: color-mix(in srgb, var(--p) 85%, transparent);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--b)
+        }
 
-/* ---------- board ---------- */
-function mk(){
-  if(board)board.destroy();
-  board=Chessboard("board",{position:G.fen(),draggable:true,
-    pieceTheme:p=>`https://images.chesscomfiles.com/chess-themes/pieces/${pset}/150/${p.toLowerCase()}.png`,
-    onDragStart:(s,p)=>!G.game_over()&&p[0]===G.turn(),
-    onDrop:(a,b)=>{if(a===b)return;const m=G.move({from:a,to:b,promotion:"q"});if(!m)return"snapback";sync(m)},
-    onSnapEnd:()=>board.position(G.fen())});
-  sync();
-}
-function sync(announce){
-  board.position(G.fen());
-  $("#board .square-55d63").removeClass("hl");
-  const h=G.history({verbose:true}),lm=h[h.length-1];if(lm)$("#board .square-"+lm.from+",#board .square-"+lm.to).addClass("hl");
-  const FIG={N:"♘",B:"♗",R:"♖",Q:"♕",K:"♔"},hs=G.history().map(x=>x.replace(/^[NBRQK]/,c=>FIG[c])),m=$$("mv");m.innerHTML="";
-  hs.forEach((s,i)=>{if(i%2===0)m.innerHTML+=`<b>${i/2+1}.</b>`;m.innerHTML+=`<span class="${i===hs.length-1?"cur":""}">${s}</span>`});
-  m.scrollTop=m.scrollHeight;$$("pg").value=pgn();
-  if(announce){if($$("sn").checked)beep(announce.captured?440:announce.san.includes("+")||announce.san.includes("#")?880:660);if($$("vo").checked)speak(announce)}
-  analyse();
-}
-$$("fl").onclick=()=>board.flip();
-$$("un").onclick=()=>{G.undo();sync();say("Undone.")};
-$$("nw").onclick=()=>{G=new Chess();sync()};
-const PN={p:"Pawn",n:"Knight",b:"Bishop",r:"Rook",q:"Queen",k:"King"};
-function speak(m){
-  let t;
-  if(m.flags.includes("k"))t="King castles short";else if(m.flags.includes("q"))t="King castles long";
-  else{t=PN[m.piece]+(m.captured?" takes ":" ")+m.to[0]+" "+m.to[1];if(m.promotion)t+=", promotes to "+PN[m.promotion]}
-  if(m.san.includes("#"))t+=", checkmate";else if(m.san.includes("+"))t+=", check";
-  speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t));
-}
-function beep(f){try{const a=new AudioContext(),o=a.createOscillator();o.connect(a.destination);o.frequency.value=f||660;o.start();o.stop(a.currentTime+.08)}catch(e){}}
-window.onresize=()=>board&&board.resize();
+        .logo {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: .3px
+        }
 
-/* ---------- PGN / Firebase ---------- */
-function pgn(){
-  const d=($$("dt").value||"").replace(/-/g,".")||"????.??.??";
-  G.header("Event",$$("ev_").value||"?","Site","chesstore-64","Date",d,"Round","-","White",$$("wh").value||"?","Black",$$("bl").value||"?","Result",$$("rs").value);
-  return G.pgn();
-}
-["ev_","wh","bl","dt","rs"].forEach(i=>$$(i).onchange=()=>$$("pg").value=pgn());
-const fname=()=>(($$("dt").value||"date")+"_"+($$("ev_").value||"event")).replace(/[^\w\-]+/g,"_")+".pgn";
-$$("dl").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([pgn()],{type:"text/plain"}));a.download=fname();a.click()};
-$$("sv").onclick=async()=>{
-  try{const o={event:$$("ev_").value,white:$$("wh").value,black:$$("bl").value,date:$$("dt").value,result:$$("rs").value,file:fname(),pgn:pgn(),created:Date.now()};
-    const r=await fetch(DB+"/games.json",{method:"POST",body:JSON.stringify(o)});if(!r.ok)throw new Error(r.status);
-    lastId=(await r.json()).name;$$("fs").textContent="Saved ✔ "+o.file}
-  catch(e){$$("fs").textContent="Save failed ("+e.message+"). Check Firebase rules."}
-};
-$$("sh").onclick=async()=>{
-  if(!lastId){$$("fs").textContent="Save first.";return}
-  const u=location.origin+location.pathname+"?g="+lastId;
-  try{if(navigator.share)await navigator.share({title:"Chess game",url:u});else{await navigator.clipboard.writeText(u);$$("fs").textContent="Link copied"}}catch(e){$$("fs").textContent=u}
-};
-$$("ls").onclick=async()=>{
-  const j=await (await fetch(DB+"/games.json")).json(),g=$$("gl");g.innerHTML="";
-  Object.entries(j||{}).sort((a,b)=>b[1].created-a[1].created).slice(0,15).forEach(([id,o])=>{
-    const d=document.createElement("div");d.textContent=`${o.date||""} · ${o.event||""} · ${o.white} vs ${o.black}`;
-    d.onclick=()=>{G.load_pgn(o.pgn);lastId=id;sync()};g.appendChild(d)});
-};
-async function loadShared(){const id=new URLSearchParams(location.search).get("g");if(!id)return;
-  try{const o=await (await fetch(DB+"/games/"+id+".json")).json();if(o){G.load_pgn(o.pgn);lastId=id;$$("ev_").value=o.event||"";$$("wh").value=o.white||"";$$("bl").value=o.black||"";$$("dt").value=o.date||"";sync()}}catch(e){}}
+        .logo b {
+            color: var(--a)
+        }
 
-/* ---------- engine ---------- */
-let sf=null;
-try{
-  sf=new Worker(URL.createObjectURL(new Blob(["importScripts('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js')"],{type:"application/javascript"})));
-  sf.onmessage=e=>{if(G.game_over())return;const l=String(e.data),m=l.match(/score (cp|mate) (-?\d+)/);
-    if(m&&l.startsWith("info depth")){let v=+m[2];if(G.turn()==="b")v=-v;const mate=m[1]==="mate";
-      $$("ev").textContent=mate?(v>0?"+":"-")+"M"+Math.abs(v):(v>0?"+":"")+(v/100).toFixed(2);
-      $$("ef").style.height=(mate?(v>0?100:0):50+50*(2/(1+Math.exp(-.004*v))-1))+"%"}
-    if(l.startsWith("bestmove")){const b=l.split(" ")[1];$$("bm").textContent=b&&b!=="(none)"?"best "+b:""}};
-  sf.postMessage("uci");
-}catch(e){$$("ev").textContent="engine n/a"}
-function analyse(){
-  if(G.game_over()){
-    if(sf)sf.postMessage("stop");
-    const mate=G.in_checkmate(),w=mate&&G.turn()==="b";
-    $$("ev").textContent=mate?(w?"1-0 Checkmate":"0-1 Checkmate"):"½-½ Draw";$$("bm").textContent="";
-    $$("ef").style.height=mate?(w?"100%":"0%"):"50%";$$("rs").value=mate?(w?"1-0":"0-1"):"1/2-1/2";$$("pg").value=pgn();return}
-  if(!sf)return;sf.postMessage("stop");sf.postMessage("position fen "+G.fen());sf.postMessage("go depth 12")}
+        header .sp {
+            flex: 1
+        }
 
-/* ---------- camera: corners, warp, per-square classification ---------- */
-const cv=$$("cv"),cx=cv.getContext("2d",{willReadFrequently:true}),pv=$$("pv"),px=pv.getContext("2d"),vid=document.createElement("video");
-vid.playsInline=true;vid.muted=true;
-const N=320,S=40;let pts=[],marking=false,rot=0,H=null,live=false,drag=-1,P=null,ref=null,prev="",cnt=0,loupe=null;
-function order(a){const cx_=a.reduce((s,p)=>s+p[0],0)/4,cy=a.reduce((s,p)=>s+p[1],0)/4;return a.slice().sort((p,q)=>Math.atan2(p[1]-cy,p[0]-cx_)-Math.atan2(q[1]-cy,q[0]-cx_))}
-const cam=i=>{const r=i>>3,c=i&7;return rot===0?[r,c]:rot===1?[c,7-r]:rot===2?[7-r,7-c]:[7-c,r]};
-const say=t=>$$("st").textContent=t;
-const sqn=(r,c)=>"abcdefgh"[c]+(8-r);
-const scale=()=>cv.width/cv.getBoundingClientRect().width;
+        .w {
+            max-width: 1180px;
+            margin: auto;
+            padding: 16px;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))
+        }
 
-$$("cam").onclick=async()=>{
-  try{vid.srcObject=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280}}});
-    await vid.play();cv.width=vid.videoWidth;cv.height=vid.videoHeight;live=true;
-    try{const s=JSON.parse(localStorage.c64pts2);if(s.w===cv.width&&s.h===cv.height){pts=order(s.pts);rot=s.rot||0;solve();say("Saved corners restored. Set the start position and press ② Learn.")}else say("Camera on. Press ① Mark corners.")}catch(e){say("Camera on. Press ① Mark corners.")}
-    loop()}
-  catch(e){say("Camera error: "+e.message+" (needs https or localhost)")}
-};
-$$("cal").onclick=()=>{pts=[];H=null;P=null;marking=true;say("Click the corners: top-left, top-right, bottom-right, bottom-left.")};
-$$("rot").onclick=()=>{rot=(rot+1)%4;solve();P=null;save();say("Rotated — the 'a8' label shows the corner treated as a8. Learn start position again.")};
-function save(){localStorage.c64pts2=JSON.stringify({w:cv.width,h:cv.height,pts,rot})}
-function pos(e){const r=cv.getBoundingClientRect(),k=scale();return[(e.clientX-r.left)*k,(e.clientY-r.top)*k]}
-cv.onpointerdown=e=>{
-  const p=pos(e);
-  if(marking){pts.push(p);if(pts.length===4){marking=false;pts=order(pts);solve();save();say("Corners set (drag to refine). Put pieces on the start position, then press ② Learn.")}return}
-  drag=pts.findIndex(q=>Math.hypot(q[0]-p[0],q[1]-p[1])<32*scale());if(drag>=0)cv.setPointerCapture(e.pointerId);
-};
-cv.onpointermove=e=>{if(drag<0)return;pts[drag]=pos(e);loupe=pts[drag];solve()};
-cv.onpointerup=()=>{if(drag>=0){drag=-1;loupe=null;save();P=null;say("Corner moved. Press ② Learn again.")}};
+        .c {
+            background: var(--p);
+            border: 1px solid var(--b);
+            border-radius: 14px;
+            padding: 14px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, .12)
+        }
 
-function solve(){
-  if(pts.length<4)return;
-  const s=pts,d=[[0,0],[N,0],[N,N],[0,N]],A=[];
-  for(let i=0;i<4;i++){const[x,y]=d[i],[X,Y]=s[i];
-    A.push([x,y,1,0,0,0,-x*X,-y*X,X]);A.push([0,0,0,x,y,1,-x*Y,-y*Y,Y])}
-  for(let i=0;i<8;i++){let m=i;for(let r=i+1;r<8;r++)if(Math.abs(A[r][i])>Math.abs(A[m][i]))m=r;
-    [A[i],A[m]]=[A[m],A[i]];for(let r=0;r<8;r++)if(r!==i){const f=A[r][i]/A[i][i];for(let c=i;c<9;c++)A[r][c]-=f*A[i][c]}}
-  H=A.map((r,i)=>r[8]/r[i]);
-}
-function warp(img){
-  const o=new Uint8ClampedArray(N*N*4),w=img.width,h=img.height,D=img.data;
-  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-    const z=H[6]*x+H[7]*y+1,sx=((H[0]*x+H[1]*y+H[2])/z)|0,sy=((H[3]*x+H[4]*y+H[5])/z)|0,i=(y*N+x)*4;o[i+3]=255;
-    if(sx<0||sy<0||sx>=w||sy>=h)continue;const k=(sy*w+sx)*4;o[i]=D[k];o[i+1]=D[k+1];o[i+2]=D[k+2]}
-  return o;
-}
-const win=(r,c)=>$$("ang").value==="1"?[c*S+10,r*S+16,c*S+S-10,r*S+S-3]:[c*S+11,r*S+11,c*S+S-11,r*S+S-11];
-function feats(o){ // sample the middle of each cell (or its lower part for angled cameras); return board-indexed [R,G,B,texture]
-  const fc=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    let a=0,g=0,b=0,l=0,l2=0,n=0;const[x0,y0,x1,y1]=win(r,c);
-    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const k=(y*N+x)*4,R=o[k],Gc=o[k+1],B=o[k+2],L=(R*77+Gc*150+B*29)>>8;a+=R;g+=Gc;b+=B;l+=L;l2+=L*L;n++}
-    const m=l/n;fc.push([a/n,g/n,b/n,Math.sqrt(Math.max(0,l2/n-m*m))])}
-  return Array.from({length:64},(_,i)=>{const[r,c]=cam(i);return fc[r*8+c]});
-}
-/* ---- automatic grid alignment: finds the real square edges and moves the 4 corners onto them ---- */
-function lum(o){const L=new Uint8Array(N*N);for(let i=0;i<N*N;i++)L[i]=(o[i*4]*77+o[i*4+1]*150+o[i*4+2]*29)>>8;return L}
-function fitLines(L,axis,K,p0,p1){
-  const pos=[],ks=[];
-  for(const k of K){let best=-1,bt=k*S;
-    for(let t=Math.max(3,k*S-16);t<=Math.min(N-4,k*S+16);t++){let sc=0;
-      for(let u=p0;u<p1;u++)sc+=axis===0?Math.abs(L[u*N+t+2]-L[u*N+t-2]):Math.abs(L[(t+2)*N+u]-L[(t-2)*N+u]);
-      if(sc>best){best=sc;bt=t}}
-    pos.push(bt);ks.push(k)}
-  const fit=(K2,P2)=>{const n=K2.length,mk=K2.reduce((a,b)=>a+b)/n,mt=P2.reduce((a,b)=>a+b)/n;let sxy=0,sxx=0;K2.forEach((k,i)=>{sxy+=(k-mk)*(P2[i]-mt);sxx+=(k-mk)**2});const b=sxy/sxx;return[mt-b*mk,b]};
-  let[a,b]=fit(ks,pos);
-  const res=pos.map((q,i)=>Math.abs(q-(a+b*ks[i]))),m=Math.max(...res);
-  if(m>5&&ks.length>3){const j=res.indexOf(m);ks.splice(j,1);pos.splice(j,1);[a,b]=fit(ks,pos)}
-  return[a,b];
-}
-function autoFix(){
-  for(let it=0;it<3;it++){
-    cx.drawImage(vid,0,0,cv.width,cv.height);
-    const L=lum(warp(cx.getImageData(0,0,cv.width,cv.height))),odd=rot&1; // the empty middle ranks are rows 2-5 (even rot) or columns 2-5 (odd rot)
-    const X=odd?fitLines(L,0,[2,3,4,5,6],8,N-8):fitLines(L,0,[1,2,3,4,5,6,7],2*S+6,6*S-6);
-    const Y=odd?fitLines(L,1,[1,2,3,4,5,6,7],2*S+6,6*S-6):fitLines(L,1,[2,3,4,5,6],8,N-8);
-    if(X[1]<S*.7||X[1]>S*1.3||Y[1]<S*.7||Y[1]>S*1.3)return false;
-    const err=Math.max(Math.abs(X[0]),Math.abs(Y[0]),Math.abs(X[0]+8*X[1]-N),Math.abs(Y[0]+8*Y[1]-N));
-    if(err<2.5)return true;
-    const d=[[X[0],Y[0]],[X[0]+8*X[1],Y[0]],[X[0]+8*X[1],Y[0]+8*Y[1]],[X[0],Y[0]+8*Y[1]]];
-    pts=d.map(([x,y])=>{const z=H[6]*x+H[7]*y+1;return[(H[0]*x+H[1]*y+H[2])/z,(H[3]*x+H[4]*y+H[5])/z]});
-    solve();save();
-  }
-  return true;
-}
-const SC=[45,45,45,14],dist=(a,b)=>a.reduce((s,v,i)=>s+((v-b[i])/SC[i])**2,0);
-const par=i=>((i>>3)+(i&7))&1;
-function cls(f,i){const p=par(i);let b=0,bd=1e9;for(let k=0;k<3;k++){const d=dist(f,P[p][k]);if(d<bd){bd=d;b=k}}return b}
-function startCls(i){const rank=8-(i>>3);return rank>=7?2:rank<=2?1:0}
-function gmap(){const m=[];for(let i=0;i<64;i++){const p=G.get(sqn(i>>3,i&7));m.push(p?(p.color==="w"?1:2):0)}return m}
-const ham=(a,b)=>{let n=0;for(let i=0;i<64;i++)if(a[i]!==b[i])n++;return n};
+        h3 {
+            margin: 0 0 10px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--m)
+        }
 
-$$("ang").onchange=()=>{P=null;say("Camera mode changed. Press ② Learn again.")};
-$$("ba").onclick=()=>{
-  if(!H){say("Mark the 4 corners first.");return}
-  const aligned=autoFix();
-  cx.drawImage(vid,0,0,cv.width,cv.height);
-  const f=feats(warp(cx.getImageData(0,0,cv.width,cv.height))),sum=[[0,1,2].map(()=>[0,0,0,0,0]),[0,1,2].map(()=>[0,0,0,0,0])];
-  f.forEach((v,i)=>{const s=sum[par(i)][startCls(i)];for(let k=0;k<4;k++)s[k]+=v[k];s[4]++});
-  P=sum.map(p=>p.map(s=>s.slice(0,4).map(v=>v/s[4])));
-  ref=f.map((v,i)=>cls(v,i));prev="";cnt=0;
-  const ok=ref.reduce((n,c,i)=>n+(c===startCls(i)),0);
-  say((aligned?"Grid aligned to the board ✔ ":"⚠ Couldn't auto-align — drag the corners onto the outer edge of the squares. ")+`Start position read correctly on ${ok}/64 squares.`+(ok<60?" Improve lighting / check rotation (a8 = black's rook corner) / camera mode, then learn again.":" Play a move."));
-};
-function decide(f){
-  const obs=f.map((v,i)=>cls(v,i)),k=obs.join("");
-  if(k===prev)cnt++;else{prev=k;cnt=1}
-  const c0=ham(obs,ref);               // squares that changed since last accepted position
-  if(c0<=1){cnt=0;adapt(f,obs);return obs}
-  if(cnt!==3&&cnt%12!==0)return obs;   // wait until the hand is gone and image is steady
-  const before=gmap(),cand=[];
-  for(const m of G.moves({verbose:true})){
-    G.move({from:m.from,to:m.to,promotion:m.promotion});const after=gmap();G.undo();
-    const exp=ref.slice();for(let i=0;i<64;i++)if(after[i]!==before[i])exp[i]=after[i];
-    cand.push([ham(obs,exp),m])}
-  cand.sort((a,b)=>a[0]-b[0]);const b=cand[0],o=cand.find(c=>c[1].from!==b[1].from||c[1].to!==b[1].to);
-  if(b[0]<=2&&b[0]<c0&&(!o||o[0]>b[0])){
-    const mv=G.move({from:b[1].from,to:b[1].to,promotion:"q"});ref=obs;sync(mv);say("Detected "+mv.san+"  ("+mv.from+" → "+mv.to+")");cnt=0;
-  }else say(`${c0} squares changed but no legal move fits (best is ${b[0]} off). Waiting… check corners/rotation if this stays.`);
-  return obs;
-}
-function adapt(f,obs){ // follow lighting drift using only squares that are known-correct
-  const t=gmap();f.forEach((v,i)=>{if(obs[i]!==t[i])return;const p=P[par(i)][t[i]];for(let k=0;k<4;k++)p[k]=p[k]*.98+v[k]*.02})
-}
-function drawPreview(o,obs){
-  px.putImageData(new ImageData(o,N,N),0,0);px.lineWidth=1;px.strokeStyle="rgba(255,255,255,.35)";
-  for(let i=0;i<=8;i++){px.beginPath();px.moveTo(i*S,0);px.lineTo(i*S,N);px.moveTo(0,i*S);px.lineTo(N,i*S);px.stroke()}
-  px.lineWidth=1;px.strokeStyle="rgba(255,235,59,.35)";for(let r=0;r<8;r++)for(let c=0;c<8;c++){const[x0,y0,x1,y1]=win(r,c);px.strokeRect(x0,y0,x1-x0,y1-y0)}
-  if(obs){px.lineWidth=3;obs.forEach((c,i)=>{if(!c)return;px.strokeStyle=c===1?"#6dbea4":"#ff5d5d";px.beginPath();px.arc(cam(i)[1]*S+S/2,cam(i)[0]*S+S/2,S/3,0,7);px.stroke()})}
-}
-function loop(){
-  if(!live)return;
-  cx.drawImage(vid,0,0,cv.width,cv.height);
-  let obs=null;
-  if(H){const o=warp(cx.getImageData(0,0,cv.width,cv.height));let f=null;
-    if(P){f=feats(o);obs=decide(f)}drawPreview(o,obs)}
-  if(H){const m=(x,y)=>{const z=H[6]*x+H[7]*y+1;return[(H[0]*x+H[1]*y+H[2])/z,(H[3]*x+H[4]*y+H[5])/z]};
-    cx.strokeStyle="rgba(109,190,164,.5)";cx.lineWidth=1*scale();
-    for(let i=0;i<=8;i++){for(const[a,b]of[[[i*S,0],[i*S,N]],[[0,i*S],[N,i*S]]]){const p=m(...a),q=m(...b);cx.beginPath();cx.moveTo(p[0],p[1]);cx.lineTo(q[0],q[1]);cx.stroke()}}}
-  const k=scale();cx.lineWidth=2*k;cx.strokeStyle="#6dbea4";cx.fillStyle="#6dbea4";
-  pts.forEach((p,i)=>{cx.beginPath();cx.arc(p[0],p[1],7*k,0,7);cx.fill();if(i){cx.beginPath();cx.moveTo(pts[i-1][0],pts[i-1][1]);cx.lineTo(p[0],p[1]);cx.stroke()}});
-  if(pts.length===4){cx.beginPath();cx.moveTo(pts[3][0],pts[3][1]);cx.lineTo(pts[0][0],pts[0][1]);cx.stroke();cx.fillStyle="#fff";cx.font=18*k+"px sans-serif";cx.fillText("a8",pts[rot][0]+9*k,pts[rot][1]+22*k)}
-  if(loupe){const z=60*k;cx.drawImage(vid,loupe[0]-15*k,loupe[1]-15*k,30*k,30*k,0,0,z*2,z*2);cx.strokeStyle="#fff";cx.strokeRect(0,0,z*2,z*2);cx.beginPath();cx.moveTo(z,0);cx.lineTo(z,z*2);cx.moveTo(0,z);cx.lineTo(z*2,z);cx.stroke()}
-  setTimeout(loop,200);
-}
-mk();loadShared();
-</script></body></html>
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit;
+            padding: 8px 11px;
+            border-radius: 9px;
+            border: 1px solid var(--b);
+            background: var(--bg);
+            color: var(--t)
+        }
+
+        button {
+            cursor: pointer;
+            transition: .15s
+        }
+
+        button:hover {
+            border-color: var(--a)
+        }
+
+        button.g {
+            background: var(--a);
+            border-color: var(--a);
+            color: #06251c;
+            font-weight: 600
+        }
+
+        .r {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin: 8px 0;
+            align-items: center
+        }
+
+        .r>input {
+            flex: 1;
+            min-width: 100px
+        }
+
+        #bw {
+            display: flex;
+            gap: 8px
+        }
+
+        #ebar {
+            width: 14px;
+            border-radius: 7px;
+            background: #222;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column-reverse
+        }
+
+        #ef {
+            background: #f3f3f3;
+            height: 50%;
+            transition: height .3s
+        }
+
+        #board {
+            flex: 1;
+            max-width: 520px;
+            margin: auto
+        }
+
+        #board .white-1e1d7 {
+            background: var(--lt) !important;
+            color: var(--dk) !important
+        }
+
+        #board .black-3c85d {
+            background: var(--dk) !important;
+            color: var(--lt) !important
+        }
+
+        #board .square-55d63.hl {
+            box-shadow: inset 0 0 0 100px rgba(255, 235, 59, .42)
+        }
+
+        .cvw {
+            position: relative
+        }
+
+        canvas {
+            width: 100%;
+            display: block;
+            border-radius: 10px;
+            background: #000;
+            touch-action: none
+        }
+
+        #pv {
+            max-width: 200px;
+            margin-top: 8px
+        }
+
+        .row2 {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start
+        }
+
+        #st {
+            min-height: 38px;
+            padding: 8px 10px;
+            border-radius: 9px;
+            background: color-mix(in srgb, var(--a) 14%, transparent);
+            color: var(--a);
+            margin: 8px 0
+        }
+
+        #mv {
+            max-height: 140px;
+            overflow: auto;
+            line-height: 1.8
+        }
+
+        #mv b {
+            color: var(--m);
+            margin: 0 4px 0 8px
+        }
+
+        #mv span {
+            padding: 1px 5px;
+            border-radius: 4px
+        }
+
+        #mv .cur {
+            background: var(--a);
+            color: #06251c
+        }
+
+        small {
+            color: var(--m)
+        }
+
+        #gl div {
+            padding: 7px;
+            border-bottom: 1px solid var(--b);
+            cursor: pointer
+        }
+
+        #gl div:hover {
+            color: var(--a)
+        }
+
+        label {
+            color: var(--m)
+        }
+    </style>
+</head>
+
+<body>
+    <header><span class="logo">♞ chesstore<b>-64</b></span><span class="sp"></span>
+        <select id="bc"></select><select id="ps"></select><button id="th">🌗</button>
+    </header>
+
+    <div class="w">
+        <div class="c">
+            <h3>Digital board</h3>
+            <div id="bw">
+                <div id="ebar">
+                    <div id="ef"></div>
+                </div>
+                <div id="board"></div>
+            </div>
+            <div class="r" style="justify-content:center"><button id="fl">⇅ Flip</button><button id="un">↶
+                    Undo</button><button id="nw">New game</button></div>
+            <div class="r" style="justify-content:center">Eval <b id="ev">–</b> <small id="bm"></small></div>
+            <h3>Moves</h3>
+            <div id="mv"></div>
+        </div>
+
+        <div class="c">
+            <h3>Real board camera</h3>
+            <div class="cvw"><canvas id="cv" width="640" height="480"></canvas></div>
+            <div class="r"><button id="cam" class="g">📷 Start camera</button><button id="cal">① Mark
+                    corners</button><button id="rot">⟳ Rotate</button><button id="ba" class="g">② Learn start
+                    position</button><select id="ang">
+                    <option value="0">Camera: top-down</option>
+                    <option value="1">Camera: angled</option>
+                </select></div>
+            <div class="r">
+                <small>Nudge grid:</small>
+                <button id="nu">↑</button>
+                <button id="nd">↓</button>
+                <button id="nl">←</button>
+                <button id="nr">→</button>
+                <select id="ns">
+                    <option value="1">1px</option>
+                    <option value="2" selected>2px</option>
+                    <option value="5">5px</option>
+                </select>
+                <button id="nrs">Recentre</button>
+            </div>
+            <div id="st">Start the camera, then click the 4 corners: top-left, top-right, bottom-right, bottom-left
+                (white at bottom = a8, h8, h1, a1). Drag corners to fine-tune.</div>
+            <div class="row2">
+                <div>
+                    <h3>What the AI sees</h3><canvas id="pv" width="320" height="320"></canvas>
+                </div>
+                <div style="flex:1">
+                    <div class="r"><label><input type="checkbox" id="vo" checked> Voice</label><label><input
+                                type="checkbox" id="sn" checked> Beep</label></div>
+                    <small>Detection reads every square as <b>empty / white / black</b>, learned from your own pieces
+                        and lighting, then finds the one legal move that explains the change. Green ring = white piece,
+                        red = black. Camera above the board works best.</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="c">
+            <h3>Save &amp; share</h3>
+            <div class="r"><input id="ev_" placeholder="Event" value="Friendly"><input id="dt" type="date"></div>
+            <div class="r"><input id="wh" placeholder="White" value="Me"><input id="bl" placeholder="Black"
+                    value="Opponent">
+                <select id="rs">
+                    <option>*</option>
+                    <option>1-0</option>
+                    <option>0-1</option>
+                    <option>1/2-1/2</option>
+                </select>
+            </div>
+            <div class="r"><button id="sv" class="g">☁ Save to chesstore-64</button><button id="dl">⬇
+                    .pgn</button><button id="sh">🔗 Share</button><button id="ls">My games</button></div>
+            <div id="fs" style="color:var(--m)"></div>
+            <div id="gl"></div>
+            <h3 style="margin-top:10px">PGN</h3><textarea id="pg" rows="7" style="width:100%"></textarea>
+            <small>Firebase rules must allow read/write on <code>games</code>.</small>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <script>
+        const DB = "https://chesstore-64-default-rtdb.asia-southeast1.firebasedatabase.app";
+        const $$ = id => document.getElementById(id);
+        let G = new Chess(), board, pset = localStorage.c64set || "neo", lastId = null;
+        $$("dt").valueAsDate = new Date();
+
+        /* ---------- themes (same chess.com piece sets as Puzzle4u) ---------- */
+        const SETS = { neo: "Neo", game_room: "Castle", classic: "Classic", neo_wood: "Neo Wood", cases: "Cases", alpha: "Alpha", wood: "Wood", light: "Light", tournament: "Tournament", luca: "Luca", club: "Club", "3d_staunton": "3D Staunton" };
+        const BC = { Aquamarine: ["#eef5f1", "#6dbea4"], Green: ["#eeeed2", "#769656"], Brown: ["#f0d9b5", "#b58863"], Blue: ["#dee3e6", "#8ca2ad"], Lavender: ["#efe9f4", "#9f8cc0"], Pink: ["#f6e7ee", "#d78fa9"] };
+        $$("ps").innerHTML = Object.entries(SETS).map(([k, v]) => `<option value="${k}">${v}</option>`).join(""); $$("ps").value = pset;
+        $$("bc").innerHTML = Object.keys(BC).map(k => `<option>${k}</option>`).join("");
+        function setBC(k) { const [l, d] = BC[k]; document.documentElement.style.setProperty("--lt", l); document.documentElement.style.setProperty("--dk", d); localStorage.c64bc = k }
+        $$("bc").value = localStorage.c64bc || "Aquamarine"; setBC($$("bc").value);
+        $$("bc").onchange = e => setBC(e.target.value);
+        $$("ps").onchange = e => { pset = e.target.value; localStorage.c64set = pset; mk() };
+        if (localStorage.c64light) document.body.classList.add("light");
+        $$("th").onclick = () => { document.body.classList.toggle("light"); localStorage.c64light = document.body.classList.contains("light") ? 1 : "" };
+
+        /* ---------- board ---------- */
+        function mk() {
+            if (board) board.destroy();
+            board = Chessboard("board", {
+                position: G.fen(), draggable: true,
+                pieceTheme: p => `https://images.chesscomfiles.com/chess-themes/pieces/${pset}/150/${p.toLowerCase()}.png`,
+                onDragStart: (s, p) => !G.game_over() && p[0] === G.turn(),
+                onDrop: (a, b) => { if (a === b) return; const m = G.move({ from: a, to: b, promotion: "q" }); if (!m) return "snapback"; sync(m) },
+                onSnapEnd: () => board.position(G.fen())
+            });
+            sync();
+        }
+        function sync(announce) {
+            board.position(G.fen());
+            $("#board .square-55d63").removeClass("hl");
+            const h = G.history({ verbose: true }), lm = h[h.length - 1]; if (lm) $("#board .square-" + lm.from + ",#board .square-" + lm.to).addClass("hl");
+            const FIG = { N: "♘", B: "♗", R: "♖", Q: "♕", K: "♔" }, hs = G.history().map(x => x.replace(/^[NBRQK]/, c => FIG[c])), m = $$("mv"); m.innerHTML = "";
+            hs.forEach((s, i) => { if (i % 2 === 0) m.innerHTML += `<b>${i / 2 + 1}.</b>`; m.innerHTML += `<span class="${i === hs.length - 1 ? "cur" : ""}">${s}</span>` });
+            m.scrollTop = m.scrollHeight; $$("pg").value = pgn();
+            if (announce) { if ($$("sn").checked) beep(announce.captured ? 440 : announce.san.includes("+") || announce.san.includes("#") ? 880 : 660); if ($$("vo").checked) speak(announce) }
+            analyse();
+        }
+        $$("fl").onclick = () => board.flip();
+        $$("un").onclick = () => { G.undo(); sync(); say("Undone.") };
+        $$("nw").onclick = () => { G = new Chess(); sync() };
+        const PN = { p: "Pawn", n: "Knight", b: "Bishop", r: "Rook", q: "Queen", k: "King" };
+        function speak(m) {
+            let t;
+            if (m.flags.includes("k")) t = "King castles short"; else if (m.flags.includes("q")) t = "King castles long";
+            else { t = PN[m.piece] + (m.captured ? " takes " : " ") + m.to[0] + " " + m.to[1]; if (m.promotion) t += ", promotes to " + PN[m.promotion] }
+            if (m.san.includes("#")) t += ", checkmate"; else if (m.san.includes("+")) t += ", check";
+            speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(t));
+        }
+        function beep(f) { try { const a = new AudioContext(), o = a.createOscillator(); o.connect(a.destination); o.frequency.value = f || 660; o.start(); o.stop(a.currentTime + .08) } catch (e) { } }
+        window.onresize = () => board && board.resize();
+
+        /* ---------- PGN / Firebase ---------- */
+        function pgn() {
+            const d = ($$("dt").value || "").replace(/-/g, ".") || "????.??.??";
+            G.header("Event", $$("ev_").value || "?", "Site", "chesstore-64", "Date", d, "Round", "-", "White", $$("wh").value || "?", "Black", $$("bl").value || "?", "Result", $$("rs").value);
+            return G.pgn();
+        }
+        ["ev_", "wh", "bl", "dt", "rs"].forEach(i => $$(i).onchange = () => $$("pg").value = pgn());
+        const fname = () => (($$("dt").value || "date") + "_" + ($$("ev_").value || "event")).replace(/[^\w\-]+/g, "_") + ".pgn";
+        $$("dl").onclick = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([pgn()], { type: "text/plain" })); a.download = fname(); a.click() };
+        $$("sv").onclick = async () => {
+            try {
+                const o = { event: $$("ev_").value, white: $$("wh").value, black: $$("bl").value, date: $$("dt").value, result: $$("rs").value, file: fname(), pgn: pgn(), created: Date.now() };
+                const r = await fetch(DB + "/games.json", { method: "POST", body: JSON.stringify(o) }); if (!r.ok) throw new Error(r.status);
+                lastId = (await r.json()).name; $$("fs").textContent = "Saved ✔ " + o.file
+            }
+            catch (e) { $$("fs").textContent = "Save failed (" + e.message + "). Check Firebase rules." }
+        };
+        $$("sh").onclick = async () => {
+            if (!lastId) { $$("fs").textContent = "Save first."; return }
+            const u = location.origin + location.pathname + "?g=" + lastId;
+            try { if (navigator.share) await navigator.share({ title: "Chess game", url: u }); else { await navigator.clipboard.writeText(u); $$("fs").textContent = "Link copied" } } catch (e) { $$("fs").textContent = u }
+        };
+        $$("ls").onclick = async () => {
+            const j = await (await fetch(DB + "/games.json")).json(), g = $$("gl"); g.innerHTML = "";
+            Object.entries(j || {}).sort((a, b) => b[1].created - a[1].created).slice(0, 15).forEach(([id, o]) => {
+                const d = document.createElement("div"); d.textContent = `${o.date || ""} · ${o.event || ""} · ${o.white} vs ${o.black}`;
+                d.onclick = () => { G.load_pgn(o.pgn); lastId = id; sync() }; g.appendChild(d)
+            });
+        };
+        async function loadShared() {
+            const id = new URLSearchParams(location.search).get("g"); if (!id) return;
+            try { const o = await (await fetch(DB + "/games/" + id + ".json")).json(); if (o) { G.load_pgn(o.pgn); lastId = id; $$("ev_").value = o.event || ""; $$("wh").value = o.white || ""; $$("bl").value = o.black || ""; $$("dt").value = o.date || ""; sync() } } catch (e) { }
+        }
+
+        /* ---------- engine ---------- */
+        let sf = null;
+        try {
+            sf = new Worker(URL.createObjectURL(new Blob(["importScripts('https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js')"], { type: "application/javascript" })));
+            sf.onmessage = e => {
+                if (G.game_over()) return; const l = String(e.data), m = l.match(/score (cp|mate) (-?\d+)/);
+                if (m && l.startsWith("info depth")) {
+                    let v = +m[2]; if (G.turn() === "b") v = -v; const mate = m[1] === "mate";
+                    $$("ev").textContent = mate ? (v > 0 ? "+" : "-") + "M" + Math.abs(v) : (v > 0 ? "+" : "") + (v / 100).toFixed(2);
+                    $$("ef").style.height = (mate ? (v > 0 ? 100 : 0) : 50 + 50 * (2 / (1 + Math.exp(-.004 * v)) - 1)) + "%"
+                }
+                if (l.startsWith("bestmove")) { const b = l.split(" ")[1]; $$("bm").textContent = b && b !== "(none)" ? "best " + b : "" }
+            };
+            sf.postMessage("uci");
+        } catch (e) { $$("ev").textContent = "engine n/a" }
+        function analyse() {
+            if (G.game_over()) {
+                if (sf) sf.postMessage("stop");
+                const mate = G.in_checkmate(), w = mate && G.turn() === "b";
+                $$("ev").textContent = mate ? (w ? "1-0 Checkmate" : "0-1 Checkmate") : "½-½ Draw"; $$("bm").textContent = "";
+                $$("ef").style.height = mate ? (w ? "100%" : "0%") : "50%"; $$("rs").value = mate ? (w ? "1-0" : "0-1") : "1/2-1/2"; $$("pg").value = pgn(); return
+            }
+            if (!sf) return; sf.postMessage("stop"); sf.postMessage("position fen " + G.fen()); sf.postMessage("go depth 12")
+        }
+
+        /* ---------- camera: corners, warp, per-square classification ---------- */
+        const cv = $$("cv"), cx = cv.getContext("2d", { willReadFrequently: true }), pv = $$("pv"), px = pv.getContext("2d"), vid = document.createElement("video");
+        vid.playsInline = true; vid.muted = true;
+        const N = 320, S = 40; let pts = [], marking = false, rot = 0, H = null, live = false, drag = -1, P = null, ref = null, prev = "", cnt = 0, loupe = null;
+        function order(a) { const cx_ = a.reduce((s, p) => s + p[0], 0) / 4, cy = a.reduce((s, p) => s + p[1], 0) / 4; return a.slice().sort((p, q) => Math.atan2(p[1] - cy, p[0] - cx_) - Math.atan2(q[1] - cy, q[0] - cx_)) }
+        const cam = i => { const r = i >> 3, c = i & 7; return rot === 0 ? [r, c] : rot === 1 ? [c, 7 - r] : rot === 2 ? [7 - r, 7 - c] : [7 - c, r] };
+        const say = t => $$("st").textContent = t;
+        const sqn = (r, c) => "abcdefgh"[c] + (8 - r);
+        const scale = () => cv.width / cv.getBoundingClientRect().width;
+
+        $$("cam").onclick = async () => {
+            try {
+                vid.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } } });
+                await vid.play(); cv.width = vid.videoWidth; cv.height = vid.videoHeight; live = true;
+                try { const s = JSON.parse(localStorage.c64pts2); if (s.w === cv.width && s.h === cv.height) { pts = order(s.pts); rot = s.rot || 0; solve(); say("Saved corners restored. Set the start position and press ② Learn.") } else say("Camera on. Press ① Mark corners.") } catch (e) { say("Camera on. Press ① Mark corners.") }
+                loop()
+            }
+            catch (e) { say("Camera error: " + e.message + " (needs https or localhost)") }
+        };
+        $$("cal").onclick = () => { pts = []; H = null; P = null; marking = true; say("Click the corners: top-left, top-right, bottom-right, bottom-left.") };
+        $$("rot").onclick = () => { rot = (rot + 1) % 4; solve(); P = null; save(); say("Rotated — the 'a8' label shows the corner treated as a8. Learn start position again.") };
+        function save() { localStorage.c64pts2 = JSON.stringify({ w: cv.width, h: cv.height, pts, rot }) }
+        function pos(e) { const r = cv.getBoundingClientRect(), k = scale(); return [(e.clientX - r.left) * k, (e.clientY - r.top) * k] }
+        /* ── Nudge grid ─────────────────────────────────────────────── */
+        let nudgeSize = 2;
+        $$("ns").onchange = e => nudgeSize = +e.target.value;
+
+        function nudge(dx, dy) {
+            if (pts.length < 4) { say("Mark corners first."); return; }
+            pts = pts.map(([x, y]) => [x + dx, y + dy]);
+            solve(); save();
+            P = null;
+            say("Grid nudged. Press ② Learn again to re-read start position.");
+        }
+        $$("nu").onclick = () => nudge(0, -nudgeSize);
+        $$("nd").onclick = () => nudge(0, nudgeSize);
+        $$("nl").onclick = () => nudge(-nudgeSize, 0);
+        $$("nr").onclick = () => nudge(nudgeSize, 0);
+        $$("nrs").onclick = () => { localStorage.removeItem("c64pts2"); pts = []; H = null; P = null; say("Saved corners cleared. Re-mark the 4 corners."); };
+        cv.onpointerdown = e => {
+            const p = pos(e);
+            if (marking) { pts.push(p); if (pts.length === 4) { marking = false; pts = order(pts); solve(); save(); say("Corners set (drag to refine). Put pieces on the start position, then press ② Learn.") } return }
+            drag = pts.findIndex(q => Math.hypot(q[0] - p[0], q[1] - p[1]) < 32 * scale()); if (drag >= 0) cv.setPointerCapture(e.pointerId);
+        };
+        cv.onpointermove = e => { if (drag < 0) return; pts[drag] = pos(e); loupe = pts[drag]; solve() };
+        cv.onpointerup = () => { if (drag >= 0) { drag = -1; loupe = null; save(); P = null; say("Corner moved. Press ② Learn again.") } };
+
+        function solve() {
+            if (pts.length < 4) return;
+            const s = pts, d = [[0, 0], [N, 0], [N, N], [0, N]], A = [];
+            for (let i = 0; i < 4; i++) {
+                const [x, y] = d[i], [X, Y] = s[i];
+                A.push([x, y, 1, 0, 0, 0, -x * X, -y * X, X]); A.push([0, 0, 0, x, y, 1, -x * Y, -y * Y, Y])
+            }
+            for (let i = 0; i < 8; i++) {
+                let m = i; for (let r = i + 1; r < 8; r++)if (Math.abs(A[r][i]) > Math.abs(A[m][i])) m = r;
+                [A[i], A[m]] = [A[m], A[i]]; for (let r = 0; r < 8; r++)if (r !== i) { const f = A[r][i] / A[i][i]; for (let c = i; c < 9; c++)A[r][c] -= f * A[i][c] }
+            }
+            H = A.map((r, i) => r[8] / r[i]);
+        }
+        function warp(img) {
+            const o = new Uint8ClampedArray(N * N * 4), w = img.width, h = img.height, D = img.data;
+            for (let y = 0; y < N; y++)for (let x = 0; x < N; x++) {
+                const z = H[6] * x + H[7] * y + 1, sx = ((H[0] * x + H[1] * y + H[2]) / z) | 0, sy = ((H[3] * x + H[4] * y + H[5]) / z) | 0, i = (y * N + x) * 4; o[i + 3] = 255;
+                if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue; const k = (sy * w + sx) * 4; o[i] = D[k]; o[i + 1] = D[k + 1]; o[i + 2] = D[k + 2]
+            }
+            return o;
+        }
+        // Window is expressed as a fraction of one square (S = 40).
+        // top/bottom/left/right are the crop margins from the square's edge.
+        const WIN = {
+            topdown: { t: 0.30, b: 0.70, l: 0.30, r: 0.70 },
+            angled: { t: 0.22, b: 0.72, l: 0.28, r: 0.72 }   // sits on the visible face
+        };
+        let winCfg = WIN.topdown;
+
+        const win = (r, c) => {
+            const t = winCfg.t * S, b = winCfg.b * S;
+            const l = winCfg.l * S, rt = winCfg.r * S;
+            return [c * S + l, r * S + t, c * S + rt, r * S + b];
+        }; function feats(o) { // sample the middle of each cell (or its lower part for angled cameras); return board-indexed [R,G,B,texture]
+            const fc = []; for (let r = 0; r < 8; r++)for (let c = 0; c < 8; c++) {
+                let a = 0, g = 0, b = 0, l = 0, l2 = 0, n = 0; const [x0, y0, x1, y1] = win(r, c);
+                for (let y = y0; y < y1; y++)for (let x = x0; x < x1; x++) { const k = (y * N + x) * 4, R = o[k], Gc = o[k + 1], B = o[k + 2], L = (R * 77 + Gc * 150 + B * 29) >> 8; a += R; g += Gc; b += B; l += L; l2 += L * L; n++ }
+                const m = l / n; fc.push([a / n, g / n, b / n, Math.sqrt(Math.max(0, l2 / n - m * m))])
+            }
+            return Array.from({ length: 64 }, (_, i) => { const [r, c] = cam(i); return fc[r * 8 + c] });
+        }
+        /* ---- automatic grid alignment: finds the real square edges and moves the 4 corners onto them ---- */
+        function lum(o) { const L = new Uint8Array(N * N); for (let i = 0; i < N * N; i++)L[i] = (o[i * 4] * 77 + o[i * 4 + 1] * 150 + o[i * 4 + 2] * 29) >> 8; return L }
+        function fitLines(L, axis, K, p0, p1) {
+            const pos = [], ks = [];
+            for (const k of K) {
+                let best = -1, bt = k * S;
+                const lo = Math.max(3, k * S - 28);   // was ±16
+                const hi = Math.min(N - 4, k * S + 28);
+                for (let t = lo; t <= hi; t++) {
+                    let sc = 0;
+                    for (let u = p0; u < p1; u++) {
+                        if (axis === 0) {
+                            // dual-offset probe = sharper peak, rejects slow gradients (mat edge)
+                            sc += Math.abs(L[u * N + t + 2] - L[u * N + t - 2])
+                                + 0.6 * Math.abs(L[u * N + t + 4] - L[u * N + t - 4]);
+                        } else {
+                            sc += Math.abs(L[(t + 2) * N + u] - L[(t - 2) * N + u])
+                                + 0.6 * Math.abs(L[(t + 4) * N + u] - L[(t - 4) * N + u]);
+                        }
+                    }
+                    if (sc > best) { best = sc; bt = t }
+                }
+                pos.push(bt); ks.push(k)
+            }
+            const fit = (K2, P2) => {
+                const n = K2.length, mk = K2.reduce((a, b) => a + b) / n, mt = P2.reduce((a, b) => a + b) / n;
+                let sxy = 0, sxx = 0;
+                K2.forEach((k, i) => { sxy += (k - mk) * (P2[i] - mt); sxx += (k - mk) ** 2 });
+                const b = sxy / sxx;
+                return [mt - b * mk, b];
+            };
+            let [a, b] = fit(ks, pos);
+            // one outlier rejection pass
+            const res = pos.map((q, i) => Math.abs(q - (a + b * ks[i])));
+            const m = Math.max(...res);
+            if (m > 6 && ks.length > 4) {
+                const j = res.indexOf(m);
+                ks.splice(j, 1); pos.splice(j, 1);
+                [a, b] = fit(ks, pos);
+            }
+            return [a, b];
+        }
+        function autoFix() {
+            for (let it = 0; it < 5; it++) {           // was 3
+                cx.drawImage(vid, 0, 0, cv.width, cv.height);
+                const L = lum(warp(cx.getImageData(0, 0, cv.width, cv.height)));
+                const odd = rot & 1;
+
+                // even rot: empty ranks are rows 2-5  → scan verticals inside them
+                // odd  rot: empty ranks are cols 2-5  → scan horizontals inside them
+                const X = odd
+                    ? fitLines(L, 0, [1, 2, 3, 4, 5, 6, 7], 8, N - 8)
+                    : fitLines(L, 0, [1, 2, 3, 4, 5, 6, 7], 2 * S + 6, 6 * S - 6);
+                const Y = odd
+                    ? fitLines(L, 1, [1, 2, 3, 4, 5, 6, 7], 2 * S + 6, 6 * S - 6)
+                    : fitLines(L, 1, [2, 3, 4, 5, 6], 8, N - 8);
+
+                if (X[1] < S * 0.7 || X[1] > S * 1.3 || Y[1] < S * 0.7 || Y[1] > S * 1.3) return false;
+
+                const err = Math.max(
+                    Math.abs(X[0]),
+                    Math.abs(Y[0]),
+                    Math.abs(X[0] + 8 * X[1] - N),
+                    Math.abs(Y[0] + 8 * Y[1] - N)
+                );
+                if (err < 3.5) return true;            // was 2.5
+
+                const d = [
+                    [X[0], Y[0]],
+                    [X[0] + 8 * X[1], Y[0]],
+                    [X[0] + 8 * X[1], Y[0] + 8 * Y[1]],
+                    [X[0], Y[0] + 8 * Y[1]]
+                ];
+                pts = d.map(([x, y]) => {
+                    const z = H[6] * x + H[7] * y + 1;
+                    return [(H[0] * x + H[1] * y + H[2]) / z, (H[3] * x + H[4] * y + H[5]) / z];
+                });
+                solve(); save();
+            }
+            return false;   // <— report failure instead of silently claiming success
+        }
+        const SC = [45, 45, 45, 14], dist = (a, b) => a.reduce((s, v, i) => s + ((v - b[i]) / SC[i]) ** 2, 0);
+        const par = i => ((i >> 3) + (i & 7)) & 1;
+        function cls(f, i) { const p = par(i); let b = 0, bd = 1e9; for (let k = 0; k < 3; k++) { const d = dist(f, P[p][k]); if (d < bd) { bd = d; b = k } } return b }
+        function startCls(i) { const rank = 8 - (i >> 3); return rank >= 7 ? 2 : rank <= 2 ? 1 : 0 }
+        function gmap() { const m = []; for (let i = 0; i < 64; i++) { const p = G.get(sqn(i >> 3, i & 7)); m.push(p ? (p.color === "w" ? 1 : 2) : 0) } return m }
+        const ham = (a, b) => { let n = 0; for (let i = 0; i < 64; i++)if (a[i] !== b[i]) n++; return n };
+
+        $$("ang").onchange = () => {
+            winCfg = $$("ang").value === "1" ? WIN.angled : WIN.topdown;
+            P = null;
+            say("Camera mode changed. Press ② Learn again.");
+        };
+        winCfg = $$("ang").value === "1" ? WIN.angled : WIN.topdown;
+        $$("ba").onclick = () => {
+            if (!H) { say("Mark the 4 corners first."); return }
+            const aligned = autoFix();
+            if (!aligned) {
+                say("⚠ Couldn't auto-align. Drag each corner exactly onto the OUTER edge of the a8/h8/h1/a1 squares, then press ② Learn again.");
+                return;
+            }
+            // ...rest of your learning code unchanged...
+            cx.drawImage(vid, 0, 0, cv.width, cv.height);
+            const f = feats(warp(cx.getImageData(0, 0, cv.width, cv.height))), sum = [[0, 1, 2].map(() => [0, 0, 0, 0, 0]), [0, 1, 2].map(() => [0, 0, 0, 0, 0])];
+            f.forEach((v, i) => { const s = sum[par(i)][startCls(i)]; for (let k = 0; k < 4; k++)s[k] += v[k]; s[4]++ });
+            P = sum.map(p => p.map(s => s.slice(0, 4).map(v => v / s[4])));
+            ref = f.map((v, i) => cls(v, i)); prev = ""; cnt = 0;
+            const ok = ref.reduce((n, c, i) => n + (c === startCls(i)), 0);
+            say(`Grid aligned ✔ Start position read on ${ok}/64 squares.` + (ok < 60 ? " Try improving lighting or nudging the grid." : " Play a move."));
+        };
+        function decide(f) {
+            const obs = f.map((v, i) => cls(v, i)), k = obs.join("");
+            if (k === prev) cnt++; else { prev = k; cnt = 1 }
+            const c0 = ham(obs, ref);               // squares that changed since last accepted position
+            if (c0 <= 1) { cnt = 0; adapt(f, obs); return obs }
+            if (cnt !== 3 && cnt % 12 !== 0) return obs;   // wait until the hand is gone and image is steady
+            const before = gmap(), cand = [];
+            for (const m of G.moves({ verbose: true })) {
+                G.move({ from: m.from, to: m.to, promotion: m.promotion }); const after = gmap(); G.undo();
+                const exp = ref.slice(); for (let i = 0; i < 64; i++)if (after[i] !== before[i]) exp[i] = after[i];
+                cand.push([ham(obs, exp), m])
+            }
+            cand.sort((a, b) => a[0] - b[0]); const b = cand[0], o = cand.find(c => c[1].from !== b[1].from || c[1].to !== b[1].to);
+            if (b[0] <= 2 && b[0] < c0 && (!o || o[0] > b[0])) {
+                const mv = G.move({ from: b[1].from, to: b[1].to, promotion: "q" }); ref = obs; sync(mv); say("Detected " + mv.san + "  (" + mv.from + " → " + mv.to + ")"); cnt = 0;
+            } else say(`${c0} squares changed but no legal move fits (best is ${b[0]} off). Waiting… check corners/rotation if this stays.`);
+            return obs;
+        }
+        function adapt(f, obs) { // follow lighting drift using only squares that are known-correct
+            const t = gmap(); f.forEach((v, i) => { if (obs[i] !== t[i]) return; const p = P[par(i)][t[i]]; for (let k = 0; k < 4; k++)p[k] = p[k] * .98 + v[k] * .02 })
+        }
+        function drawPreview(o, obs) {
+            px.putImageData(new ImageData(o, N, N), 0, 0); px.lineWidth = 1; px.strokeStyle = "rgba(255,255,255,.35)";
+            for (let i = 0; i <= 8; i++) { px.beginPath(); px.moveTo(i * S, 0); px.lineTo(i * S, N); px.moveTo(0, i * S); px.lineTo(N, i * S); px.stroke() }
+            px.lineWidth = 1; px.strokeStyle = "rgba(255,235,59,.35)"; for (let r = 0; r < 8; r++)for (let c = 0; c < 8; c++) { const [x0, y0, x1, y1] = win(r, c); px.strokeRect(x0, y0, x1 - x0, y1 - y0) }
+            if (obs) { px.lineWidth = 3; obs.forEach((c, i) => { if (!c) return; px.strokeStyle = c === 1 ? "#6dbea4" : "#ff5d5d"; px.beginPath(); px.arc(cam(i)[1] * S + S / 2, cam(i)[0] * S + S / 2, S / 3, 0, 7); px.stroke() }) }
+        }
+        function loop() {
+            if (!live) return;
+            cx.drawImage(vid, 0, 0, cv.width, cv.height);
+            let obs = null;
+            if (H) {
+                const o = warp(cx.getImageData(0, 0, cv.width, cv.height)); let f = null;
+                if (P) { f = feats(o); obs = decide(f) } drawPreview(o, obs)
+            }
+            if (H) {
+                const m = (x, y) => { const z = H[6] * x + H[7] * y + 1; return [(H[0] * x + H[1] * y + H[2]) / z, (H[3] * x + H[4] * y + H[5]) / z] };
+                cx.strokeStyle = "rgba(109,190,164,.5)"; cx.lineWidth = 1 * scale();
+                for (let i = 0; i <= 8; i++) { for (const [a, b] of [[[i * S, 0], [i * S, N]], [[0, i * S], [N, i * S]]]) { const p = m(...a), q = m(...b); cx.beginPath(); cx.moveTo(p[0], p[1]); cx.lineTo(q[0], q[1]); cx.stroke() } }
+            }
+            const k = scale(); cx.lineWidth = 2 * k; cx.strokeStyle = "#6dbea4"; cx.fillStyle = "#6dbea4";
+            pts.forEach((p, i) => { cx.beginPath(); cx.arc(p[0], p[1], 7 * k, 0, 7); cx.fill(); if (i) { cx.beginPath(); cx.moveTo(pts[i - 1][0], pts[i - 1][1]); cx.lineTo(p[0], p[1]); cx.stroke() } });
+            if (pts.length === 4) { cx.beginPath(); cx.moveTo(pts[3][0], pts[3][1]); cx.lineTo(pts[0][0], pts[0][1]); cx.stroke(); cx.fillStyle = "#fff"; cx.font = 18 * k + "px sans-serif"; cx.fillText("a8", pts[rot][0] + 9 * k, pts[rot][1] + 22 * k) }
+            if (loupe) { const z = 60 * k; cx.drawImage(vid, loupe[0] - 15 * k, loupe[1] - 15 * k, 30 * k, 30 * k, 0, 0, z * 2, z * 2); cx.strokeStyle = "#fff"; cx.strokeRect(0, 0, z * 2, z * 2); cx.beginPath(); cx.moveTo(z, 0); cx.lineTo(z, z * 2); cx.moveTo(0, z); cx.lineTo(z * 2, z); cx.stroke() }
+            setTimeout(loop, 200);
+        }
+        mk(); loadShared();
+    </script>
+</body>
+
+</html>
